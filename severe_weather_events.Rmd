@@ -11,49 +11,72 @@ This analysis uses [data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2
 [U.S. National Oceanic and Atmospheric Administration's (NOAA) storm events database](http://www.ncdc.noaa.gov/stormevents/).
 The objective was to determine which storms events, from 1950 to November 2011, caused the most fatalities, injuries,
 property damage and crop damage. Observations with missing or undetermined values were either removed of transformed.
-Our findings show that 
+Our findings show that the **TORNADO** event is by the far the most dangerous weather event for both fatatlies and 
+injures. The **TORNADO** event's combined number were more than 10x the **EXCESSIVE HEAT** event, which 
+came in second. For property damage, the **FLOOD** event was by far the highest, while **EXCESSIVE WETNESS** was 
+responsible for the most crop damage.
 
 # Data Processing
 
+For the fatality and injury data, NA values were replace with 0, as not to affect the totals. It was done if this manner
+as opposed removing the observations, so that if one of the variables had an NA, the other value could still be used for 
+the total calculations. The fatality and injury data was then grouped by event type and summed. An additional calculated
+column for the combination of fatalties and injuries was added.
 
-```{r libraries, message=FALSE}
+Property and crop damage in the data set was stored in scientific notation. This meant there was a column for the 
+coefficient and exponent for each damage type. Coeffection values that were NA were converted to zero. In addition,
+expontent values were either converted to zero if NA or and unknown type. If the coeffection was a character 
+respresentation of an exponent value (e.g. M = million = 6), it was converted to its corresponding numeric value. The 
+property and crop damage data was then grouped by event type and summed. Two additional calculated columns were added 
+that contained the decimal value represtation the value. This value as scaled ot represent millions. An additional 
+calculated column for the combination of property and property damage was added.
+
+```{r fatalities_injuries, message=FALSE}
+temp <- tempfile()
+download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", temp)
+storm_data <- read.csv(bzfile(temp))
+unlink(temp)
+
 library(dplyr)
-library(ggplot2)
-library(grid)
-library(gridExtra)
-```
 
-```{r fatalities_injuries}
 # set number of top events to plot
 top_limit <- 5
 
-# remove rows with missing fatalies or injuries data
-storm_data_by_event <- subset(storm_data, !is.na(c(storm_data$FATALITIES, storm_data$INJURIES)))
+# fatalies or injuries data
+storm_data_by_event <- storm_data
+
+# convert NAs to zero
+storm_data_by_event$FATALITIES[is.na(storm_data$FATALITIES)] <- 0
+storm_data_by_event$INJURIES[is.na(storm_data$INJURIES)] <- 0
 
 # group by event
 storm_data_by_event <- storm_data_by_event %>%
   group_by(EVTYPE) %>%
     summarise(FATALITIES_TOTAL = sum(FATALITIES), INJURIES_TOTAL = sum(INJURIES), BOTH_TOTAL = sum(FATALITIES + INJURIES))
 
-# remove rows with no data
+# property and crop damage data
 storm_data_by_impact <- storm_data
-complete_rows <- complete.cases(storm_data_by_impact[, c("PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")])
-storm_data_by_impact <- storm_data_by_impact[complete_rows, ]
-storm_data_by_impact <- storm_data_by_impact[(storm_data_by_impact$PROPDMG > 0 & storm_data_by_impact$CROPDMG > 0), ]
+# complete_rows <- complete.cases(storm_data_by_impact[, c("PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")])
+# storm_data_by_impact <- storm_data_by_impact[complete_rows, ]
+# storm_data_by_impact <- storm_data_by_impact[(storm_data_by_impact$PROPDMG > 0 & storm_data_by_impact$CROPDMG > 0), ]
 
 # convert levels to characters
 storm_data_by_impact$PROPDMGEXP <- as.character(storm_data_by_impact$PROPDMGEXP)
 storm_data_by_impact$CROPDMGEXP <- as.character(storm_data_by_impact$CROPDMGEXP)
 
-# map non-numeric exponent values to numeric
-storm_data_by_impact$PROPDMG[storm_data_by_impact$PROPDMGEXP %in% c("", "-", "?", "+")] <- 0  
-storm_data_by_impact$PROPDMGEXP[storm_data_by_impact$PROPDMGEXP %in% c("", "-", "?", "+")] <- 0  
+# convert NAs or non-numeric exponent values to numeric
+storm_data_by_impact$PROPDMG[(is.na(storm_data_by_impact$PROPDMG) | 
+                              storm_data_by_impact$PROPDMGEXP %in% c("", "-", "?", "+"))] <- 0  
+storm_data_by_impact$PROPDMGEXP[(is.na(storm_data_by_impact$PROPDMGEXP) | 
+                                 storm_data_by_impact$PROPDMGEXP %in% c("", "-", "?", "+"))] <- 0  
 storm_data_by_impact$PROPDMGEXP[storm_data_by_impact$PROPDMGEXP %in% c("k", "K")] <- 3  
 storm_data_by_impact$PROPDMGEXP[storm_data_by_impact$PROPDMGEXP %in% c("m", "M")] <- 6  
 storm_data_by_impact$PROPDMGEXP[storm_data_by_impact$PROPDMGEXP %in% c("b", "B")] <- 9  
 
-storm_data_by_impact$CROPDMG[storm_data_by_impact$CROPDMGEXP %in% c("", "-", "?", "+")] <- 0  
-storm_data_by_impact$CROPDMGEXP[storm_data_by_impact$PROPDMGEXP %in% c("", "-", "?", "+")] <- 0  
+storm_data_by_impact$CROPDMG[(is.na(storm_data_by_impact$CROPDMG) | 
+                              storm_data_by_impact$CROPDMGEXP %in% c("", "-", "?", "+"))] <- 0  
+storm_data_by_impact$CROPDMGEXP[(is.na(storm_data_by_impact$CROPDMGEXP) | 
+                                 storm_data_by_impact$PROPDMGEXP %in% c("", "-", "?", "+"))] <- 0  
 storm_data_by_impact$CROPDMGEXP[storm_data_by_impact$CROPDMGEXP %in% c("k", "K")] <- 3  
 storm_data_by_impact$CROPDMGEXP[storm_data_by_impact$CROPDMGEXP %in% c("m", "M")] <- 6  
 storm_data_by_impact$CROPDMGEXP[storm_data_by_impact$CROPDMGEXP %in% c("b", "B")] <- 9  
@@ -65,8 +88,8 @@ storm_data_by_impact <- storm_data_by_impact %>%
             CROPDMG_UNSCALED_TOTAL = sum(CROPDMG) / 1000000)
 
 # scale base values by exponent
-storm_data_by_impact$PROPDMG_SCALED_TOTAL = storm_data_by_impact$PROPDMG_UNSCALED_TOTAL * (10 ^ as.integer(storm_data_by_impact$PROPDMGEXP))
-storm_data_by_impact$CROPDMG_SCALED_TOTAL = storm_data_by_impact$CROPDMG_UNSCALED_TOTAL * (10 ^ as.integer(storm_data_by_impact$CROPDMGEXP))
+storm_data_by_impact$PROPDMG_SCALED_TOTAL <- suppressWarnings(storm_data_by_impact$PROPDMG_UNSCALED_TOTAL * (10 ^ as.integer(storm_data_by_impact$PROPDMGEXP)))
+storm_data_by_impact$CROPDMG_SCALED_TOTAL <- suppressWarnings(storm_data_by_impact$CROPDMG_UNSCALED_TOTAL * (10 ^ as.integer(storm_data_by_impact$CROPDMGEXP)))
 
 # group again by event type
 storm_data_by_impact <- storm_data_by_impact %>%
@@ -74,12 +97,10 @@ storm_data_by_impact <- storm_data_by_impact %>%
   summarise(PROPDMG_TOTAL = sum(PROPDMG_SCALED_TOTAL), 
             CROPDMG_TOTAL = sum(CROPDMG_SCALED_TOTAL))
 
-# conver NAs to 0 so as not to affect totals
+# convert NAs to 0 so as not to affect totals
 storm_data_by_impact$PROPDMG_TOTAL[is.na(storm_data_by_impact$PROPDMG_TOTAL)] <- 0
 storm_data_by_impact$CROPDMG_TOTAL[is.na(storm_data_by_impact$CROPDMG_TOTAL)] <- 0
 storm_data_by_impact$BOTH_TOTAL = storm_data_by_impact$PROPDMG_TOTAL + storm_data_by_impact$CROPDMG_TOTAL
-
-
 ```
 
 # Results
@@ -100,7 +121,11 @@ Again **TORNADO** events are the most dangerous with regards to injuries caused,
 When combine both fatalities and injuries are combined, the **TORNADO** events in not surprinsly first. The **TORNADO** event's 
 combined numbers approach 100,000, more than 10x the **EXCESSIVE HEAT** event, which is a distant second.
 
-```{r fatality_injury_plots, fig.height=24, fig.width=8}
+```{r fatality_injury_plots, message=FALSE, fig.height=24, fig.width=8}
+library(ggplot2)
+library(grid)
+library(gridExtra)
+
 # plot fatalities
 storm_data_by_event_fatalities <- arrange(storm_data_by_event, desc(FATALITIES_TOTAL))[1:top_limit, ]
 p <- with(storm_data_by_event_fatalities, 
@@ -149,12 +174,12 @@ For property damange, the **FLOOD** event was number one, with property damage a
 **HURRICANE/TYPHOON** event was second, with significant damage totaling just over $25 billion. In third place was the
 **HURRICANE**. This event could probably be combined with with the **HURRICANE/TYPHOON** event.
 
-When looking at crop damage, the **RIVER FLOOD** (see NOAA documentation for event definitions) event was first with just over $5 billion in damage. A close second was
-the **ICE STORM** with roughly $5 billion also. The **FLOOD** event, which had the most property damage, had the third
-most crop damage.
+When looking at crop damage, the **EXCESSIVE WETNESS** (see NOAA documentation for event definitions) event was first 
+with just over $100 million in damage. A close second was the **ICE STORM** with roughly $5 billion also. The **FLOOD**
+event, which had the most property damage, had the third most crop damage.
 
-Combing the damages caused to both property and crops, the top three, **FLOOD**, **HURRICANE/TYPHOON** and **HURRICANE**,  
-were then as for just property. This is due to the fact that property damage values were a couple orders of magnitude 
+Combining the damages caused to both property and crops, the top three, **FLOOD**, **HURRICANE/TYPHOON** and **TORNADO**,  
+were the same as for just property. This is due to the fact that property damage values were a couple orders of magnitude 
 larger than the crop damage.
 
 ```{r property_crop_plots, fig.height=24, fig.width=8}
