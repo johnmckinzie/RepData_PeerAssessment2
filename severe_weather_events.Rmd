@@ -18,10 +18,10 @@ responsible for the most crop damage.
 
 # Data Processing
 
-For the fatality and injury data, NA values were replace with 0, as not to affect the totals. It was done if this manner
-as opposed removing the observations, so that if one of the variables had an NA, the other value could still be used for 
-the total calculations. The fatality and injury data was then grouped by event type and summed. An additional calculated
-column for the combination of fatalties and injuries was added.
+For the fatality and injury data, NA values were replaced with 0, as not to affect the totals. It was done in this 
+manner, as opposed removing the observations, so that if one of the variables had an NA, the other value could still be 
+used for the total calculations. The fatality and injury data was then grouped by event type and summed. An additional 
+calculated column for the combination of fatalties and injuries was added.
 
 Property and crop damage in the data set was stored in scientific notation. This meant there was a column for the 
 coefficient and exponent for each damage type. Coeffection values that were NA were converted to zero. In addition,
